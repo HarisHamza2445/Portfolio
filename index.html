@@ -593,9 +593,16 @@ footer { padding-block: 26px; color: var(--muted); font-size: 12.5px; display: f
       function sample(text, font) {
         var c = document.createElement('canvas'); c.width = W; c.height = H;
         var x = c.getContext('2d'); x.fillStyle = '#000'; x.textAlign = 'center'; x.textBaseline = 'middle';
-        var size = H * 0.78; x.font = font.replace('{s}', size);
-        while (x.measureText(text).width > W * 0.82 && size > 20) { size -= 4; x.font = font.replace('{s}', size); }
-        x.fillText(text, W / 2, H / 2 + size * 0.04);
+        /* fit the word between the coordinates label (top) and the hint (bottom) */
+        var padT = 30, padB = 30, maxH = H - padT - padB, maxW = W * 0.84, size = H * 0.9, m, asc, desc;
+        x.textBaseline = 'alphabetic';
+        for (;;) {
+          x.font = font.replace('{s}', size); m = x.measureText(text);
+          asc = m.actualBoundingBoxAscent || size * 0.75; desc = m.actualBoundingBoxDescent || size * 0.2;
+          if ((m.width <= maxW && asc + desc <= maxH) || size <= 20) break;
+          size -= 2;
+        }
+        x.fillText(text, W / 2, padT + (maxH - asc - desc) / 2 + asc);
         var d = x.getImageData(0, 0, W, H).data, out = [], step = W < 500 ? 2 : 3;
         for (var y = 0; y < H; y += step) for (var i = 0; i < W; i += step) if (d[(y * W + i) * 4 + 3] > 140) out.push(i - W / 2, H / 2 - y);
         var res = new Float32Array(N * 3);
