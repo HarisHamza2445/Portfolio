@@ -70,6 +70,7 @@ a { color: inherit; }
 .hatch::before, .hatch::after { content: ""; position: absolute; top: -6px; width: 11px; height: 11px; z-index: 2;
   background: linear-gradient(var(--muted), var(--muted)) center / 1px 100% no-repeat, linear-gradient(var(--muted), var(--muted)) center / 100% 1px no-repeat; opacity: .7; }
 .hatch::before { left: -6px; } .hatch::after { right: -6px; }
+@media (max-width: 772px) { .hatch::before, .hatch::after { display: none; } }
 
 /* Header */
 .top {
@@ -239,6 +240,10 @@ a { color: inherit; }
 @media (max-width: 600px) { .dock .long { display: none; } .dock button, .dock a { font-size: 13px; gap: 6px; } }
 
 footer { padding-block: 26px; color: var(--muted); font-size: 12.5px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+
+/* theme switch reveal */
+::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+::view-transition-new(root) { z-index: 2; }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
 </style>
@@ -584,12 +589,25 @@ footer { padding-block: 26px; color: var(--muted); font-size: 12.5px; display: f
   function css(v) { return getComputedStyle(root).getPropertyValue(v).trim(); }
 
   /* ---------- Theme toggle ---------- */
-  document.getElementById('theme').addEventListener('click', function () {
+  document.getElementById('theme').addEventListener('click', function (e) {
     var dark = root.getAttribute('data-theme') === 'dark';
     var next = dark ? 'light' : 'dark';
-    root.setAttribute('data-theme', next);
-    try { localStorage.setItem('hh-theme-v2', next); } catch (e) {}
-    if (window.__hhColors) window.__hhColors();
+    function apply() {
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem('hh-theme-v2', next); } catch (err) {}
+      if (window.__hhColors) window.__hhColors();
+    }
+    // circle grows from the button and reveals the new theme
+    if (!document.startViewTransition || reduce) { apply(); return; }
+    var b = this.getBoundingClientRect();
+    var x = b.left + b.width / 2, y = b.top + b.height / 2;
+    var r = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+    document.startViewTransition(apply).ready.then(function () {
+      root.animate(
+        { clipPath: ['circle(0px at ' + x + 'px ' + y + 'px)', 'circle(' + r + 'px at ' + x + 'px ' + y + 'px)'] },
+        { duration: 650, easing: 'cubic-bezier(.65,0,.35,1)', pseudoElement: '::view-transition-new(root)' }
+      );
+    });
   });
 
   /* ---------- Three.js particle banner: scatter → "hello" ↔ "Haris" ---------- */
